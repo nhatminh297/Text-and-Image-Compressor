@@ -5,17 +5,20 @@ from PIL import Image
 
 from .algorithms import adaptive_huffman, lzw, lz77
 
+
 def decodeJPG(filename):
     cpp_file = r"apps\algorithms\decoder.cpp"
     executable = "decoder"
     subprocess.run(["g++", cpp_file, "-o", executable])
     subprocess.run([r".\\" + executable, filename])
 
+
 def encodeJPG(filename):
     cpp_file = r"apps\algorithms\encoder.cpp"
     executable = "encoder"
     subprocess.run(["g++", cpp_file, "-o", executable])
-    subprocess.run([r".\\encoder " , filename])
+    subprocess.run([r".\\encoder ", filename])
+
 
 def get_file_size(file_path):
     return os.path.getsize(file_path)
@@ -33,13 +36,14 @@ def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previ
             image = Image.open(uploaded_file)
             image_path = f"temp_images/{uploaded_file.name}"
             image.save(image_path)
-
-            # original_file_size = get_file_size(image_path)
             original_file_size = uploaded_file.size
-            compressed_file_size = 1
+
             if compression_algorithm == 'Adaptive Huffman':
-                compressor = adaptive_huffman.AdaptiveHuffman(path=image_path)
-                compressed_file = compressor.compress()
+                # compressor = adaptive_huffman.AdaptiveHuffman(path=image_path)
+                # compressed_file = compressor.compress()
+                output_path = f"CompressedFiles/{uploaded_file.name.split('.')[0]}_AHCompressed.txt"
+                adaptive_huffman.compress(image_path, output_path, (0, 255), False)
+                compressed_file = os
 
             elif compression_algorithm == 'LZW':
                 compressor = lzw.LZW_IMG(path=image_path)
@@ -52,17 +56,16 @@ def compress_images(uploaded_files, compression_algorithm, searchWindow=6, previ
                 encodeJPG(file_name)
                 compressed_filename = os.path.splitext(file_name)[0] + ".jpg"
                 compressed_file_size = os.path.getsize(compressed_filename)
-                with open(compressed_filename, 'rb')as f:
+                with open(compressed_filename, 'rb') as f:
                     compressed_file = f.read()
 
-
             # compressed_file_size = get_file_size(compressed_file)
-            
+
             compression_ratio = original_file_size / compressed_file_size
             compression_percent = (1 - compressed_file_size / original_file_size) * 100
 
             compressed_files.append((compressed_file, original_file_size, compressed_file_size, compression_ratio,
-                                    compression_percent))
+                                     compression_percent))
     return compressed_files
 
 
@@ -79,7 +82,7 @@ def decompress_images(compressed_files, decompression_algorithm):
             decompressed_image = decompressor.decompress()
             decompressed_images.append(decompressed_image)
         elif decompression_algorithm == 'LZW':
-            decompressor = lzw.LZW_IMG(compressed_file)
+            decompressor = lzw.LZW_IMG(file=compressed_file)
             decompressed_image = decompressor.decompress()
             decompressed_images.append(decompressed_image)
         elif decompression_algorithm == 'LZ77':
@@ -121,13 +124,13 @@ def image_compression():
                 compressed_files = compress_images(uploaded_files, compression_algorithm)
 
             st.markdown("**Download compressed files:**")
-            for i,compressed_file in enumerate(compressed_files):
+            for i, compressed_file in enumerate(compressed_files):
                 # st.markdown(f"**File Name:** {compressed_file.name}")
                 st.markdown(f"**Original File Size:** {compressed_file[1]} bytes")
                 st.markdown(f"**Compressed File Size:** {compressed_file[2]} bytes")
                 st.markdown(f"**Compression Ratio:** {compressed_file[3]:.2f}")
                 st.markdown(f"**Compression Percent:** {compressed_file[4]:.2f}%")
-                if compression_algorithm!="JPG":
+                if compression_algorithm != "JPG":
                     st.download_button(
                         label="Download",
                         data=compressed_file[0],
@@ -162,14 +165,14 @@ def image_compression():
             st.markdown("**Original Images:**")
             for i, image in enumerate(decompressed_images):
                 st.image(image)
-                if decompression_algorithm =='JPG':
+                if decompression_algorithm == 'JPG':
                     filename = os.path.splitext(compressed_files[i].name)[0] + ".bmp"
                     with open(filename, 'rb') as f:
                         data = f.read()
                     st.download_button(
-                    label="Download",
-                    data=data,
-                    file_name=filename
+                        label="Download",
+                        data=data,
+                        file_name=filename
                     )
                     st.markdown("---")
 
