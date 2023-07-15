@@ -3,7 +3,6 @@ import collections
 NYT = 'NYT'
 
 
-# pylint: disable=too-many-instance-attributes
 class Tree:
     def __init__(self, weight, num, data=None):
         """Use a set (`nodes`) to store all nodes in order to search the same

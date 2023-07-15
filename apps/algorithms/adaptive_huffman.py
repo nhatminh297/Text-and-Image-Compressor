@@ -6,11 +6,11 @@ from bitarray import bitarray, bits2bytes
 from progress.bar import ShadyBar
 
 from .utils.tree import Tree, NYT, exchange
-from .utils.utils import (encode_dpcm, decode_dpcm, bin_str2bool_list, bool_list2int, entropy)
+from .utils.utils import (bin_str2bool_list, bool_list2int)
 
 
 class AdaptiveHuffman:
-    def __init__(self, byte_seq, alphabet_range=(0, 255), dpcm=False):
+    def __init__(self, byte_seq, alphabet_range=(0, 255)):
         """Create an adaptive huffman encoder and decoder.
 
         Args:
@@ -18,12 +18,10 @@ class AdaptiveHuffman:
             alphabet_range (tuple or integer): The range of alphabet
                 inclusively.
         """
-
         self.byte_seq = byte_seq
-        self.dpcm = dpcm
 
-        self._bits = None  # Only used in decode().
-        self._bits_idx = 0  # Only used in decode().
+        self._bits = None
+        self._bits_idx = 0
 
         # Get the first decimal number of all alphabets
         self._alphabet_first_num = min(alphabet_range)
@@ -59,7 +57,6 @@ class AdaptiveHuffman:
             Returns:
                 list of bool -- Fixed codes.
             """
-
             alphabet_idx = dec - (self._alphabet_first_num - 1)
             if alphabet_idx <= 2 * self.rem:
                 fixed_str = '{:0{padding}b}'.format(
@@ -78,11 +75,6 @@ class AdaptiveHuffman:
             max=len(self.byte_seq),
             suffix='%(percent).1f%% - %(elapsed_td)ss'
         )
-
-        if self.dpcm:
-            self.byte_seq = tuple(encode_dpcm(self.byte_seq))
-
-        logging.getLogger(__name__).info('entropy: %f', entropy(self.byte_seq))
 
         code = []
         for symbol in self.byte_seq:
@@ -128,7 +120,6 @@ class AdaptiveHuffman:
             Returns:
                 list -- The n bits has been read.
             """
-
             progressbar.next(bit_count)
             ret = self._bits[self._bits_idx:self._bits_idx + bit_count]
             self._bits_idx += bit_count
@@ -168,7 +159,7 @@ class AdaptiveHuffman:
 
         code = []
         while self._bits_idx < len(self._bits):
-            current_node = self.tree  # go to root
+            current_node = self.tree
             while current_node.left or current_node.right:
                 bit = read_bits(1)[0]
                 current_node = current_node.right if bit else current_node.left
@@ -184,7 +175,7 @@ class AdaptiveHuffman:
             self.update(dec, first_appearance)
 
         progressbar.finish()
-        return decode_dpcm(code) if self.dpcm else code
+        return code
 
     def update(self, data, first_appearance):
 
@@ -233,37 +224,26 @@ class AdaptiveHuffman:
             first_appearance = False
 
 
-def compress(in_filename, out_filename, alphabet_range, dpcm):
+def compress(in_filename, out_filename, alphabet_range=(0, 255)):
     with open(in_filename, 'rb') as in_file:
-        logging.getLogger(__name__).info('open file: "%s"', in_filename)
         content = in_file.read()
-        logging.getLogger(__name__).info(
-            'original size: %d bytes', os.path.getsize(in_file.name)
-        )
-    ada_huff = AdaptiveHuffman(content, alphabet_range, dpcm)
+
+    ada_huff = AdaptiveHuffman(content, alphabet_range)
     code = ada_huff.encode()
 
     with open(out_filename, 'wb') as out_file:
         logging.getLogger(__name__).info('write file: "%s"', out_filename)
         code.tofile(out_file)
-    logging.getLogger(__name__).info(
-        'compressed size: %d bytes', os.path.getsize(out_filename)
-    )
+
+    return out_file, os.path.getsize(out_filename)
 
 
-def extract(in_filename, out_filename, alphabet_range, dpcm):
+def extract(in_filename, out_filename, alphabet_range):
     with open(in_filename, 'rb') as in_file:
-        logging.getLogger(__name__).info('open file: "%s"', in_filename)
         content = in_file.read()
-        logging.getLogger(__name__).info(
-            'original size: %d bytes', os.path.getsize(in_file.name)
-        )
-    ada_huff = AdaptiveHuffman(content, alphabet_range, dpcm)
+
+    ada_huff = AdaptiveHuffman(content, alphabet_range)
     code = ada_huff.decode()
 
     with open(out_filename, 'wb') as out_file:
-        logging.getLogger(__name__).info('write file: "%s"', out_filename)
         out_file.write(bytes(code))
-    logging.getLogger(__name__).info(
-        'extract size: %d bytes', os.path.getsize(out_filename)
-    )

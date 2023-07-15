@@ -1,5 +1,6 @@
 from decimal import getcontext
 
+import sys
 import pandas as pd
 import streamlit as st
 from apps.algorithms import ae, huffman, lzw, lz77
@@ -22,14 +23,14 @@ def text_compression():
     compression_algorithm = st.sidebar.selectbox("Select compression algorithm", compression_options)
 
     def compress(input_text, name_path=None):
-        encoding, encoding_text = " a", " b "
-        decoded_output = " c"
+        encoding, encoding_text = None, ""
+        decoded_output = None
         frequency_table = {}
+        before, after = None, None
 
         if mode == "Compress":
             if not input_text:
                 st.warning("Please enter some text.")
-                check_point = 1
                 return
 
             if compression_algorithm == 'Huffman':
@@ -46,11 +47,6 @@ def text_compression():
                         columns=("Symbol", "Code"))
                     st.table(table)
 
-                    percent_saved = (1 - after / before) * 100
-                    st.markdown("### Compression Results")
-                    st.text(f"Original Size: {before} bits")
-                    st.text(f"Compressed Size: {after} bits")
-                    st.text(f"Percent Saved: {percent_saved:.2f}%")
 
             elif compression_algorithm == 'Arithmetic':
                 precision = st.number_input("Enter the precision:", min_value=1, value=28, step=1)
@@ -74,30 +70,40 @@ def text_compression():
                     st.text(f"The binary code is: {binary_code}")
 
             elif compression_algorithm == 'LZW':
-                compressor = lzw.LZW_TEXT()
-                # encoding_code = compressor.compress(input_text)
-                encoding = compressor.compress_text(input_text)
-                before, after = len(input_text) * 8, len(encoding_text) * 8
+                if st.button("Compress"):
+                    compressor = lzw.LZW_TEXT()
+                    encoding = compressor.compress_text(input_text)
+                    before, after = len(input_text) * 8, len(encoding) * 8
 
             elif compression_algorithm == 'LZ77':
                 searchWindow = st.slider("Enter the search window size:", min_value=1, step=1)
                 previewWindow = st.slider("Enter the preview window size:", min_value=1, step=1)
-                if (st.button("Are you sure about that???")):
+                if (st.button("Compress")):
                     compressor = lz77.LZ77(searchWindowSize=searchWindow, previewWindowSize=previewWindow)
                     encoding = compressor.encode_lz77(input_text)
                     before, after = len(input_text) * 8, len(encoding) * 8
 
+            if after != None :
+                percent_saved = (1 - after / before) * 100
+                st.markdown("### Compression Results")
+                st.text(f"Original Size: {before} bits")
+                st.text(f"Compressed Size: {after} bits")
+                st.text(f"Percent Saved: {percent_saved:.2f}%")
+
             if selection == 'Enter':
                 st.text(f"Encoded output: {encoding}")
-                # if compression_algorithm == 'LZW':
-                #     st.text(f"Encodeding: {encoding_code}")
 
             elif selection == 'Upload':
-                name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "." + \
+                name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "Encode." + \
                                  uploaded_file.name.split('.')[1]
-                text_path_save = f"CompressedFiles/{name_file_comp}"
-                with open(text_path_save, 'w', encoding="utf-8") as file:
-                    file.write(str(encoding))
+
+                if encoding != None:
+                    st.download_button(
+                            label="Download",
+                            data=encoding,
+                            file_name=name_file_comp
+                        )
+                st.markdown("---")
 
         if mode == "Decompress":
             if compression_algorithm == 'Huffman':
@@ -142,19 +148,24 @@ def text_compression():
                 st.text(f"Decoded output: {decoded_output}")
 
             elif selection == 'Upload':
-                name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "." + \
+                name_file_comp = uploaded_file.name.split('.')[0] + "_" + compression_algorithm + "Decode." + \
                                  uploaded_file.name.split('.')[1]
-                text_path_save = f"DecompressedFiles/{name_file_comp}"
-                with open(text_path_save, 'w', encoding="utf-8") as file:
-                    file.write(decoded_output)
 
-        st.text("Done!!!")
+                if decoded_output != None:
+                    st.download_button(
+                            label="Download",
+                            data=decoded_output,
+                            file_name=name_file_comp
+                    )
+                
+        if decoded_output != None:
+            st.text("Done!!!")
 
     if selection == 'Enter':
         input_text = st.text_area("Enter the text to compress:")
         compress(input_text)
     elif selection == 'Upload':
-        uploaded_files = st.file_uploader("Choose text", accept_multiple_files=True, type=['txt', 'doc', 'docx'],
+        uploaded_files = st.file_uploader("Choose text", accept_multiple_files=True, type=['txt'],
                                           key="text")
 
         for uploaded_file in uploaded_files:

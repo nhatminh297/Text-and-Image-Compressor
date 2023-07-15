@@ -2,13 +2,13 @@ import os
 
 import numpy as np
 from PIL import Image
-
+from io import StringIO
 
 class LZ77:
     def __init__(self, file=None, path=None, searchWindowSize=6, previewWindowSize=7):
         self.path = path
         if file != None:
-            self.file = str(file.read())[2:]
+            self.file = file.read().decode('utf-8')
 
         self.data = None
         self.searchWindowSize = searchWindowSize
@@ -73,7 +73,7 @@ class LZ77:
                     try:
                         nextLetter = int(nextLetter[0])
                     except:
-                        continue
+                        pass
 
                 if (result[0] == 0):
                     encodedNumbers.append(0)
@@ -91,14 +91,12 @@ class LZ77:
 
     def decode_lz77(self, encodeStr, opt=0):
         i = 0
-        print(encodeStr[:10])
         list_data = encodeStr.split('`')
-        print(list_data[-10:])
         decodedString = ""
         if opt == 1:
             decodedString = []
-            shape = list_data[-2:]
-            list_data = list_data[:-2]
+            shape = list_data[:2]
+            list_data = list_data[2:]
         list_data = list_data[:-1]
         while i < len(list_data) / 3:
             character = (list_data[i * 3 + 2])
@@ -109,7 +107,7 @@ class LZ77:
             try:
                 a = int(list_data[i * 3 + 0])
             except:
-                print("_________________________", list_data[i * 3 - 2:i * 3 + 2], "___________")
+                pass
             if (int(list_data[i * 3 + 0]) == 0):
                 if opt == 1:
                     decodedString.append(character)
@@ -137,30 +135,25 @@ class LZ77:
         my_string = np.asarray(Image.open(self.path), np.uint8)
         shape = my_string.shape
         stringToEncode = (my_string.reshape(-1, 1).tolist())
-        print(stringToEncode[0][0])
-        print(my_string.reshape(1, -1).shape)
 
         self.shape = my_string.shape
         self.string = my_string
         compressed_data = self.encode_lz77(stringToEncode, opt=1)
         print("Compressed file generated as compressed.txt")
-        filesplit = str(os.path.basename(self.path)).split('.')
-        return compressed_data + "`" + str(shape[0]) + "`" + str(shape[1])
+        # filesplit = str(os.path.basename(self.path)).split('.')
+        return str(shape[0]) + "`" + str(shape[1])+ "`" + compressed_data 
 
     def decompress(self):
         data_comp = self.file
-
         decodedString, shape = self.decode_lz77(data_comp, opt=1)
         if decodedString[-1] == '':
             decodedString = decodedString[:-1]
         digitImageflaten = np.array(decodedString, dtype=np.uint8)
-        print("_____", decodedString[-10:])
 
-        print(shape)
-        if len(digitImageflaten) == int(shape[0]) * int(shape[1][:-1]):
-            digitImage = digitImageflaten.reshape(int(shape[0]), int(shape[1][:-1]))
+        if len(digitImageflaten) == int(shape[0]) * int(shape[1]):
+            digitImage = digitImageflaten.reshape(int(shape[0]), int(shape[1]))
         else:
-            digitImage = digitImageflaten.reshape(int(shape[0]), int(shape[1][:-1]), 3)
+            digitImage = digitImageflaten.reshape(int(shape[0]), int(shape[1]), 3)
 
         image = Image.fromarray(digitImage.astype(np.uint8))
         # image.save('_LZ77Decompressed.jpg')
